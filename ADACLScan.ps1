@@ -6960,12 +6960,907 @@ Return $intCriticalityLevel
 
 }
 #==========================================================================
-# Function		: WriteHTM
+# Function		: WriteExcel
 # Arguments     : Security Descriptor, OU dn string, Output htm file
 # Returns   	: n/a
 # Description   : Wites the SD info to a HTM table, it appends info if the file exist
 #==========================================================================
 function WriteHTM
+{
+    Param([bool] $bolACLExist,$sd,[string]$DSObject,[bool] $OUHeader,[string] $strColorTemp,[string] $htmfileout,[bool] $CompareMode,[bool] $FilterMode,[bool]$boolReplMetaDate,[string]$strReplMetaDate,[bool]$boolACLSize,[string]$strACLSize,[bool]$boolOUProtected,[bool]$bolOUPRotected,[bool]$bolCriticalityLevel,[bool]$bolTranslateGUID,[string]$strObjClass,[bool]$bolObjClass)
+
+$strTHOUColor = "E5CF00"
+$strTHColor = "EFAC00"
+if ($bolCriticalityLevel -eq $true)
+{
+$strLegendColor =@"
+bgcolor="#A4A4A4"
+"@
+}
+else
+{
+$strLegendColor = ""
+}
+$strLegendColorInfo=@"
+bgcolor="#A4A4A4"
+"@
+$strLegendColorLow =@"
+bgcolor="#0099FF"
+"@
+$strLegendColorMedium=@"
+bgcolor="#FFFF00"
+"@
+$strLegendColorWarning=@"
+bgcolor="#FFCC00"
+"@
+$strLegendColorCritical=@"
+bgcolor="#DF0101"
+"@
+$strFont =@"
+<FONT size="1" face="verdana, hevetica, arial">
+"@
+$strFontRights =@"
+<FONT size="1" face="verdana, hevetica, arial">
+"@ 
+$strFontOU =@"
+<FONT size="1" face="verdana, hevetica, arial">
+"@
+$strFontTH =@"
+<FONT size="2" face="verdana, hevetica, arial">
+"@
+If ($OUHeader -eq $true)
+{
+$strHTMLText =@"
+$strHTMLText
+<TR bgcolor="$strTHOUColor"><TD><b>$strFontOU $DSObject</b>
+"@
+
+if ($bolObjClass -eq $true)
+{
+$strHTMLText =@"
+$strHTMLText
+<TD><b>$strFontOU $strObjClass</b>
+"@
+}
+if ($boolReplMetaDate -eq $true)
+{
+$strHTMLText =@"
+$strHTMLText
+<TD><b>$strFontOU $strReplMetaDate</b>
+"@
+}
+if ($boolACLSize -eq $true)
+{
+$strHTMLText =@"
+$strHTMLText
+<TD><b>$strFontOU $strACLSize bytes</b>
+"@
+}
+if ($boolOUProtected -eq $true)
+{
+    if ($bolOUProtected -eq $true)
+    {
+$strHTMLText =@"
+$strHTMLText
+<TD bgcolor="FF0000"><b>$strFontOU $bolOUProtected</b>
+"@
+    }
+    else
+    {
+$strHTMLText =@"
+$strHTMLText
+<TD><b>$strFontOU $bolOUProtected</b>
+"@
+    }
+}
+
+$strHTMLText =@"
+$strHTMLText
+</TR>
+"@
+}
+
+
+Switch ($strColorTemp) 
+{
+
+"1"
+	{
+	$strColor = "DDDDDD"
+	$strColorTemp = "2"
+	}
+"2"
+	{
+	$strColor = "AAAAAA"
+	$strColorTemp = "1"
+	}		
+"3"
+	{
+	$strColor = "FF1111"
+}
+"4"
+	{
+	$strColor = "00FFAA"
+}     
+"5"
+	{
+	$strColor = "FFFF00"
+}          
+	}# End Switch
+
+if ($bolACLExist) 
+{
+	$sd  | foreach{
+
+
+    if($null  -ne  $_.AccessControlType)
+    {
+        $objAccess = $($_.AccessControlType.toString())
+    }
+    else
+    {
+        $objAccess = $($_.AuditFlags.toString())
+    }
+	$objFlags = $($_.ObjectFlags.toString())
+	$objType = $($_.ObjectType.toString())
+    $objIsInheried = $($_.IsInherited.toString())
+	$objInheritedType = $($_.InheritedObjectType.toString())
+	$objRights = $($_.ActiveDirectoryRights.toString())
+    $objInheritanceType = $($_.InheritanceType.toString())
+    
+
+
+    if($chkBoxEffectiveRightsColor.IsChecked -eq $false)
+    {
+    	Switch ($objRights)
+    	{
+   		    "Self"
+    		{
+                #Self right are never express in gui it's a validated write ( 0x00000008 ACTRL_DS_SELF)
+
+                 $objRights = ""
+            }
+    		"DeleteChild, DeleteTree, Delete"
+    		{
+    			$objRights = "DeleteChild, DeleteTree, Delete"
+
+    		}
+    		"GenericRead"
+    		{
+    			$objRights = "Read Permissions,List Contents,Read All Properties,List"
+            }
+    		"CreateChild"
+    		{
+    			$objRights = "Create"	
+    		}
+    		"DeleteChild"
+    		{
+    			$objRights = "Delete"		
+    		}
+    		"GenericAll"
+    		{
+    			$objRights = "Full Control"		
+    		}
+    		"CreateChild, DeleteChild"
+    		{
+    			$objRights = "Create/Delete"		
+    		}
+    		"ReadProperty"
+    		{
+    	        Switch ($objInheritanceType) 
+    	        {
+    	 	        "None"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                      default
+    	 	                        {$objRights = "Read All Properties"	}
+                                }#End switch
+
+
+
+                        }
+                                  	 	        "Children"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                      default
+    	 	                        {$objRights = "Read All Properties"	}
+                                }#End switch
+                                }
+                        	 	        "Descendents"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Read"	
+                    }
+                      default
+    	 	                        {$objRights = "Read All Properties"	}
+                                }#End switch
+                                }
+    	 	        default
+    	 	        {$objRights = "Read All Properties"	}
+                }#End switch
+
+    			           	
+    		}
+    		"ReadProperty, WriteProperty" 
+    		{
+    			$objRights = "Read All Properties;Write All Properties"			
+    		}
+    		"WriteProperty" 
+    		{
+    	        Switch ($objInheritanceType) 
+    	        {
+    	 	        "None"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                      default
+    	 	                        {$objRights = "Write All Properties"	}
+                                }#End switch
+
+
+
+                        }
+                                  	 	        "Children"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                      default
+    	 	                        {$objRights = "Write All Properties"	}
+                                }#End switch
+                                }
+                        	 	        "Descendents"
+    	 	        {
+                     
+                        	 		Switch ($objFlags)
+    	    	                { 
+    		      	                "ObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                       	                
+    		      	                "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                    {
+                       $objRights = "Write"	
+                    }
+                      default
+    	 	                        {$objRights = "Write All Properties"	}
+                                }#End switch
+                                }
+    	 	        default
+    	 	        {$objRights = "Write All Properties"	}
+                }#End switch		
+    		}
+    	}# End Switch
+    }
+    else
+    {
+ 
+    	Switch ($objRights)
+    	{
+    		"Self"
+    		{
+                #Self right are never express in gui it's a validated write ( 0x00000008 ACTRL_DS_SELF)
+
+                 $objRights = ""
+            }
+    		"GenericRead"
+    		{
+                 $objRights = "Read Permissions,List Contents,Read All Properties,List"
+            }
+    		"CreateChild"
+    		{
+                 $objRights = "Create"	
+    		}
+    		"DeleteChild"
+    		{
+                $objRights = "Delete"		
+    		}
+    		"GenericAll"
+    		{
+                $objRights = "Full Control"		
+    		}
+    		"CreateChild, DeleteChild"
+    		{
+                $objRights = "Create/Delete"		
+    		}
+    		"ReadProperty"
+    		{
+                Switch ($objInheritanceType) 
+    	        {
+    	 	        "None"
+    	 	        {
+                     
+                        Switch ($objFlags)
+    	    	        { 
+    		      	        "ObjectAceTypePresent"
+                            {
+                                $objRights = "Read"	
+                            }
+    		      	        "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                                $objRights = "Read"	
+                            }
+                            default
+    	 	                {$objRights = "Read All Properties"	}
+                        }#End switch
+                    }
+                     "Children"
+    	 	        {
+                     
+                        Switch ($objFlags)
+    	    	        { 
+    		      	        "ObjectAceTypePresent"
+                            {
+                                $objRights = "Read"	
+                            }
+    		      	        "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                                $objRights = "Read"	
+                            }
+                            default
+    	 	                {$objRights = "Read All Properties"	}
+                        }#End switch
+                    }
+                    "Descendents"
+                    {
+                        Switch ($objFlags)
+                        { 
+                            "ObjectAceTypePresent"
+                            {
+                            $objRights = "Read"	
+                            }
+                       	                
+                            "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                            $objRights = "Read"	
+                            }
+                            default
+                            {$objRights = "Read All Properties"	}
+                        }#End switch
+                    }
+                    default
+                    {$objRights = "Read All Properties"	}
+                }#End switch
+    		}
+    		"ReadProperty, WriteProperty" 
+    		{
+                $objRights = "Read All Properties;Write All Properties"			
+    		}
+    		"WriteProperty" 
+    		{
+                Switch ($objInheritanceType) 
+    	        {
+    	 	        "None"
+    	 	        {
+                        Switch ($objFlags)
+                        { 
+                            "ObjectAceTypePresent"
+                            {
+                               $objRights = "Write"	
+                            }
+                            "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                               $objRights = "Write"	
+                            }
+                            default
+                            {
+                                $objRights = "Write All Properties"	
+                            }
+                        }#End switch
+                    }
+                    "Children"
+                    {
+                        Switch ($objFlags)
+                        { 
+                            "ObjectAceTypePresent"
+                            {
+                                $objRights = "Write"	
+                            }
+                            "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                                $objRights = "Write"	
+                            }
+                            default
+                            {
+                                $objRights = "Write All Properties"	
+                            }
+                        }#End switch
+                    }
+                    "Descendents"
+                    {
+                        Switch ($objFlags)
+                        { 
+                            "ObjectAceTypePresent"
+                            {
+                                $objRights = "Write"	
+                            }
+                            "ObjectAceTypePresent, InheritedObjectAceTypePresent"
+                            {
+                                $objRights = "Write"	
+                            }
+                            default
+                            {
+                                $objRights = "Write All Properties"	
+                            }
+                        }#End switch
+                    }
+                    default
+                    {
+                        $objRights = "Write All Properties"
+                    }
+                }#End switch		
+    		}
+            default
+            {
+  
+            }
+    	}# End Switch  
+
+        $intCriticalityValue = GetCriticality $_.IdentityReference.toString() $_.ActiveDirectoryRights.toString() $_.AccessControlType.toString() $_.ObjectFlags.toString() $_.InheritanceType.toString() $_.ObjectType.toString() $_.InheritedObjectType.toString()
+        
+        Switch ($intCriticalityValue)
+        {
+            0 {$strLegendText = "Info";$strLegendColor = $strLegendColorInfo}
+            1 {$strLegendText = "Low";$strLegendColor = $strLegendColorLow}
+            2 {$strLegendText = "Medium";$strLegendColor = $strLegendColorMedium}
+            3 {$strLegendText = "Warning";$strLegendColor = $strLegendColorWarning}
+            4 {$strLegendText = "Critical";$strLegendColor = $strLegendColorCritical}
+        }
+        $strLegendTextVal = $strLegendText
+        if($intCriticalityValue -gt $global:intShowCriticalityLevel)
+        {
+            $global:intShowCriticalityLevel = $intCriticalityValue
+        }
+        
+    }#End IF else
+
+	$strNTAccount = $($_.IdentityReference.toString())
+    
+    If ($strNTAccount.contains("S-1-"))
+	{
+	 $strNTAccount = ConvertSidToName -server $global:strDomainLongName -Sid $strNTAccount
+
+	}
+   
+    Switch ($strColorTemp) 
+    {
+
+    "1"
+	{
+	$strColor = "DDDDDD"
+	$strColorTemp = "2"
+	}
+	"2"
+	{
+	$strColor = "AAAAAA"
+	$strColorTemp = "1"
+	}		
+    "3"
+	{
+	$strColor = "FF1111"
+    }
+    "4"
+	{
+	$strColor = "00FFAA"
+    }     
+    "5"
+	{
+	$strColor = "FFFF00"
+    }          
+	}# End Switch
+
+	 Switch ($objInheritanceType) 
+	 {
+	 	"All"
+	 	{
+	 		Switch ($objFlags) 
+	    	{ 
+		      	"InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo =  "This object and all child objects"
+                    $strPerm =  "$objRights $(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+		      	}    	
+		      	"ObjectAceTypePresent"
+		      	{
+		      		$strApplyTo =  "This object and all child objects"
+                    $strPerm =  "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 
+		      	"ObjectAceTypePresent, InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo =  "$(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+                    $strPerm =  "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 	      	
+		      	"None"
+		      	{
+		      		$strApplyTo ="This object and all child objects"
+                    $strPerm = "$objRights"
+		      	} 
+		      		default
+	 		    {
+		      		$strApplyTo = "Error"
+                    $strPerm = "Error: Failed to display permissions 1K"
+		      	} 	 
+	
+		    }# End Switch
+	 		
+	 	}
+	 	"Descendents"
+	 	{
+	
+	 		Switch ($objFlags)
+	    	{ 
+		      	"InheritedObjectAceTypePresent"
+		      	{
+		      	    $strApplyTo = "$(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+                    $strPerm = "$objRights"
+		      	}
+		      	"None"
+		      	{
+		      		$strApplyTo = "Child Objects Only"
+                    $strPerm = "$objRights"
+		      	} 	      	
+		      	"ObjectAceTypePresent"
+		      	{
+		      		$strApplyTo = "Child Objects Only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 
+		      	"ObjectAceTypePresent, InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo =	"$(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+                    $strPerm =	"$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	}
+		      	default
+	 			{
+		      		$strApplyTo = "Error"
+                    $strPerm = "Error: Failed to display permissions 2K"
+		      	} 	 
+	
+		    } 		
+	 	}
+	 	"None"
+	 	{
+	 		Switch ($objFlags)
+	    	{ 
+		      	"ObjectAceTypePresent"
+		      	{
+		      		$strApplyTo = "This Object Only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 
+		      	"None"
+		      	{
+		      		$strApplyTo = "This Object Only"
+                    $strPerm = "$objRights"
+		      	} 
+		      		default
+	 		    {
+		      		$strApplyTo = "Error"
+                    $strPerm = "Error: Failed to display permissions 4K"
+		      	} 	 
+	
+			}
+	 	}
+	 	"SelfAndChildren"
+	 	{
+	 	 		Switch ($objFlags)
+	    	{ 
+		      	"ObjectAceTypePresent"
+	      		{
+		      		$strApplyTo = "This object and all child objects within this conatainer only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	}
+		      	"InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo = "Children within this conatainer only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+		      	} 
+
+		      	"ObjectAceTypePresent, InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo =  "$(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+                    $strPerm =  "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 	      	
+		      	"None"
+		      	{
+		      		$strApplyTo = "This object and all child objects"
+                    $strPerm = "$objRights"
+		      	}                                  	   
+		      	default
+	 		    {
+		      		$strApplyTo = "Error"
+                    $strPerm = "Error: Failed to display permissions 5K"
+		      	} 	 
+	
+			}   	
+	 	} 	
+	 	"Children"
+	 	{
+	 	 		Switch ($objFlags)
+	    	{ 
+		      	"InheritedObjectAceTypePresent"
+		      	{
+		      		$strApplyTo = "Children within this conatainer only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+		      	} 
+		      	"None"
+		      	{
+		      		$strApplyTo = "Children  within this conatainer only"
+                    $strPerm = "$objRights"
+		      	} 	      	
+		      	"ObjectAceTypePresent, InheritedObjectAceTypePresent"
+	      		{
+		      		$strApplyTo = "$(if($bolTranslateGUID){$objInheritedType}else{MapGUIDToMatchingName -strGUIDAsString $objInheritedType -Domain $global:strDomainDNName})"
+                    $strPerm = "$(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName}) $objRights"
+		      	} 	
+		      	"ObjectAceTypePresent"
+	      		{
+		      		$strApplyTo = "Children within this conatainer only"
+                    $strPerm = "$objRights $(if($bolTranslateGUID){$objType}else{MapGUIDToMatchingName -strGUIDAsString $objType -Domain $global:strDomainDNName})"
+		      	} 		      	
+		      	default
+	 			{
+		      		$strApplyTo = "Error"
+                    $strPerm = "Error: Failed to display permissions 6K"
+		      	} 	 
+	
+	 		}
+	 	}
+	 	default
+	 	{
+		    $strApplyTo = "Error"
+            $strPerm = "Error: Failed to display permissions 7K"
+		} 	 
+	}# End Switch
+
+##
+
+$strACLHTMLText =@"
+$strACLHTMLText
+<TR bgcolor="$strColor"><TD>$strFont $DSObject</TD>
+"@
+
+if ($bolObjClass -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strObjClass</TD>
+"@
+}
+if ($boolReplMetaDate -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strReplMetaDate</TD>
+"@
+}
+
+if ($boolACLSize -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strACLSize bytes</TD>
+"@
+}
+
+if ($boolOUProtected -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $bolOUPRotected </TD>
+"@
+}
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont <a href="#web" onclick="GetGroupDN('$strNTAccount')">$strNTAccount</a></TD>
+<TD>$strFont $objAccess</TD>
+<TD>$strFont $objIsInheried </TD>
+<TD>$strFont $strApplyTo</TD>
+<TD $strLegendColor>$strFontRights $strPerm</TD>
+"@
+
+$objhashtableACE = [pscustomobject][ordered]@{Object = $DSObject ;`ObjectClass = $strObjClass ;`Trustee = $strNTAccount ;`Access = $objAccess ;`
+Inhereted = $objIsInheried ;`
+'Apply To' = $strApplyTo ;`
+Permission = $strPerm}
+
+$global:hashAllACE += $objhashtableACE
+
+if($CompareMode)
+{
+
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $($_.color.toString())</TD>
+"@
+}
+if ($bolCriticalityLevel -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD $strLegendColor>$strFont $strLegendTextVal</TD>
+"@
+
+}
+}# End Foreach
+
+	
+}
+else
+{
+if ($OUHeader -eq $false)
+{
+if ($FilterMode)
+{
+
+
+
+if ($boolReplMetaDate -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strReplMetaDate</TD>
+"@
+}
+
+if ($boolACLSize -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strACLSize bytes</TD>
+"@
+}
+
+if ($boolOUProtected -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $bolOUPRotected </TD>
+"@
+}
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont No Matching Permissions Set</TD>
+"@
+
+
+
+if ($bolCriticalityLevel -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD $strLegendColor>$strFont $strLegendTextVal</TD>
+"@
+}
+}
+else
+{
+
+
+if ($boolReplMetaDate -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strReplMetaDate</TD>
+"@
+}
+
+if ($boolACLSize -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $strACLSize bytes</TD>
+"@
+}
+
+if ($boolOUProtected -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont $bolOUPRotected </TD>
+"@
+}
+
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont N/A</TD>
+<TD>$strFont No Permissions Set</TD>
+"@
+
+
+if ($bolCriticalityLevel -eq $true)
+{
+$strACLHTMLText =@"
+$strACLHTMLText
+<TD $strLegendColor>$strFont $strLegendTextVal</TD>
+"@
+}
+
+}# End If
+}#end If OUHeader false
+}
+$strACLHTMLText =@"
+$strACLHTMLText
+</TR>
+"@
+
+
+
+#end ifelse OUHEader
+$strHTMLText = $strHTMLText + $strACLHTMLText
+
+Out-File -InputObject $strHTMLText -Append -FilePath $htmfileout 
+Out-File -InputObject $strHTMLText -Append -FilePath $strFileHTM
+
+$strHTMLText = $null
+$strACLHTMLText = $null
+Remove-Variable -Name "strHTMLText"
+Remove-Variable -Name "strACLHTMLText"
+
+}
+#==========================================================================
+# Function		: WriteHTM
+# Arguments     : Security Descriptor, OU dn string, Output htm file
+# Returns   	: n/a
+# Description   : Wites the SD info to a HTM table, it appends info if the file exist
+#==========================================================================
+function WriteHTM_OLD
 {
     Param([bool] $bolACLExist,$sd,[string]$ou,[bool] $OUHeader,[string] $strColorTemp,[string] $htmfileout,[bool] $CompareMode,[bool] $FilterMode,[bool]$boolReplMetaDate,[string]$strReplMetaDate,[bool]$boolACLSize,[string]$strACLSize,[bool]$boolOUProtected,[bool]$bolOUPRotected,[bool]$bolCriticalityLevel,[bool]$bolTranslateGUID,[string]$strObjClass,[bool]$bolObjClass)
 
@@ -7676,7 +8571,7 @@ $strACLHTMLText
 $strACLHTMLText =@"
 $strACLHTMLText
 <TD>$strFont <a href="#web" onclick="GetGroupDN('$strNTAccount')">$strNTAccount</a></TD>
-<TD>$strFont $(if($null -ne $_.AccessControlType){$_.AccessControlType.toString()}else{$_.AuditFlags.toString()}) </TD>
+<TD>$strFont $objAccess </TD>
 <TD>$strFont $($_.IsInherited.toString())</TD>
 <TD>$strPerm</TD>
 "@
@@ -9448,6 +10343,7 @@ $strACLSize = ""
 $bolOUProtected = $false
 $aclcount = 0
 $sdOUProtect = ""
+$global:hashAllACE =  @()
 
 If ($bolCSV)
 {
@@ -12787,11 +13683,13 @@ if($base)
                 {
                     $rsl = Get-Perm $allSubOU $global:strDomainShortName $false $false $false $false $false $false $false $false $false $false $false $false
                 }
+                $global:hashAllACE | Export-Excel -path '.\Excel.xlsx' -WorkSheetname "Matrix" -BoldTopRow -TableStyle Medium2 -TableName "matrixtbl" -NoLegend -AutoSize -FreezeTopRow
                 Write-host "Report saved in $strFileHTM" -ForegroundColor Yellow
             }
             else # Create CSV file
             {
                 $rsl = Get-Perm $allSubOU $global:strDomainShortName $false $false $false $false $true $true $false $false $false $false $false $false
+
             }
         }
         else
